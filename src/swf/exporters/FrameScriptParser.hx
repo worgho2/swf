@@ -249,6 +249,17 @@ class FrameScriptParser
 											stack.push(temp);
 
 										// Log.info("", "after array: " + stack);
+										case OObject(fieldCount):
+											// newobject: fieldCount name/value pairs, the first pushed
+											// first (sendCommand("focus", {"x": 0, ...}) of DDTank's assets)
+											var fields = [];
+											for (i in 0...fieldCount)
+											{
+												var value = stack.pop();
+												var name = stack.pop();
+												fields.unshift(Std.string(name) + ": " + AVM2.literal(value));
+											}
+											stack.push("{" + fields.join(", ") + "}");
 										case ORetVoid:
 										case ONull:
 											stack.push(null);
@@ -941,6 +952,14 @@ class AVM2
 		return js;
 	}
 
+	/** A value of the translator's stack as JS: a String is already code (a
+		quoted string, an expression), anything else (Int, Float, Bool, null)
+		is written as JSON. */
+	public static function literal(value:Dynamic):String
+	{
+		return #if (haxe_ver >= 4.2) Std.isOfType #else Std.is #end (value, String) ? value : haxe.Json.stringify(value);
+	}
+
 	public static function parseFunctionCall(abcData:ABCData, cls:ClassDef, nameIndex:IName, argCount:Int, stack:Array<Dynamic>):String
 	{
 		var is_array:Bool = false;
@@ -967,18 +986,7 @@ class AVM2
 		var temp = [];
 		for (i in 0...argCount)
 		{
-			//			if (i > 0) js += ", ";
-			var arg = stack.pop();
-			if (#if (haxe_ver >= 4.2) Std.isOfType #else Std.is #end (arg, String))
-			{
-				//				js += arg;
-				temp.push(arg);
-			}
-			else
-			{
-				//				js += haxe.Json.stringify(arg);
-				temp.push(haxe.Json.stringify(arg));
-			}
+			temp.push(literal(stack.pop()));
 		}
 		temp.reverse();
 		js += temp.join(", ");

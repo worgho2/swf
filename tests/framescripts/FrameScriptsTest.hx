@@ -25,6 +25,10 @@ class FrameScriptsTest
 		var scripts = FrameScriptParser.convertToJS(living, "game.living.Living");
 		equals("base class method", '\nthis.sendCommand("effect");', scripts[0]);
 
+		// 2. Object literals (newobject), nested too.
+		equals("object literal", '\nthis.sendCommand("focus", {"x": 0, "y": 0, "strategy": "shockingLinear", "speed": 20});', scripts[1]);
+		equals("nested object literal", '\nthis.sendCommand("focus", {"x": -200, "strategy": "default", "inner": {"a": 1}});\nthis.stop();', scripts[2]);
+
 		Sys.println('$checks checks, $failures failed');
 		Sys.exit(failures == 0 ? 0 : 1);
 	}
