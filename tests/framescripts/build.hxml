@@ -1,0 +1,8 @@
+-main FrameScriptsTest
+-neko framescripts-test.n
+-cp ../../src
+-lib openfl
+-lib lime
+-lib format
+-lib hxp
+-D tools

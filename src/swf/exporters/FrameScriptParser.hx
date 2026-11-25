@@ -906,8 +906,6 @@ class AVM2
 			{
 				case NPublic(_) if ("" != prop.nameSpaceName):
 					js = prop.nameSpaceName.replace(".", "_") + "_" + prop.name;
-				case NProtected(_) if ("" != prop.nameSpaceName):
-					js = prop.nameSpaceName.replace(".", "_") + "_" + prop.name;
 				case NInternal(_) if (cls.name == prop.nameIndex):
 					js = "this." + prop.name;
 				case NPublic(_):
@@ -927,6 +925,10 @@ class AVM2
 							js = prop.name;
 							//						}
 					}
+				// A protected namespace is named after its class
+				// ("road.game.resource:ActionMovie"), never a package: the name is
+				// a member of the instance, like the private and internal ones (a
+				// frame script calling sendCommand of the SWF's ActionMovie).
 				case NPrivate(_) | NInternal(_) | NProtected(_):
 					// Log.info("", "Namespace " + prop.nameSpace + " " + prop.name);
 					js = prop.name;
