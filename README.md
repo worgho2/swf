@@ -1,3 +1,9 @@
+> **Branch `blacktank`** (fork `worgho2/swf`, base 3.4.0): fixes to the frame
+> script translator (`FrameScriptParser`) for the DDTank client in Haxe, each
+> with its case in `tests/framescripts` (Neko, without lime's CFFI:
+> `cd tests/framescripts && haxe build.hxml && neko framescripts-test.n`).
+> To go upstream once the game is verified.
+
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE.md) [![Haxelib Version](https://img.shields.io/github/tag/openfl/swf.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/swf)
 
 SWF
