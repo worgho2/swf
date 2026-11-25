@@ -19,6 +19,7 @@ class FrameScriptsTest
 	{
 		var living = load("fixtures/living.swf");
 		var twoabc = load("fixtures/twoabc.swf");
+		var unoptimized = load("fixtures/unoptimized.swf");
 
 		// 1. A method of the base class defined in the SWF itself: Flash CS and
 		// mxmlc name the protected sendCommand of ActionMovie by a QName in its
@@ -53,6 +54,17 @@ class FrameScriptsTest
 		equals("the other frames are kept", '\nthis.sendCommand("effect");', report.scripts[0]);
 		equals("convertToJS leaves it out too", null, scripts[3]);
 		equals("a class without frame scripts", 0, FrameScriptParser.translate(living, "road.game.resource.ActionMovie").untranslated.length);
+
+		// 5. A call whose value is dropped, callproperty and pop (mxmlc without
+		// its optimizer; choicefigure.swf of DDTank), is a statement on this,
+		// as callpropvoid: the call used to get a null receiver and the pop
+		// to drop it, leaving the frame empty.
+		var plain = FrameScriptParser.translate(unoptimized, "game.living.Living");
+		equals("dropped call of the base class", '\nthis.sendCommand("effect");', plain.scripts[0]);
+		// Unoptimized, the keys of an object literal also go through coerce_s,
+		// which the translator does not know: those frames are reported.
+		equals("unoptimized object literals are reported", "2: unsupported opcodes: OToString|3: unsupported opcodes: OToString|4: unsupported opcodes: OToInt, OSetReg(1), OReg(1)",
+			[for (u in plain.untranslated) u.frame + ": " + u.reason].join("|"));
 
 		Sys.println('$checks checks, $failures failed');
 		Sys.exit(failures == 0 ? 0 : 1);

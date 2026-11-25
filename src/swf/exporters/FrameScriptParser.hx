@@ -104,7 +104,13 @@ class FrameScriptParser
 										case OScope:
 											stack.pop();
 										case OPop:
-											stack.pop();
+											var value = stack.pop();
+											// callproperty then pop: a call whose value is dropped, a
+											// statement (mxmlc without its optimizer writes stop() so)
+											if (pindex > 0 && pcodes[pindex - 1].opr.match(OCallProperty(_, _)) && value != null && value != "")
+											{
+												js += ind() + value + ";";
+											}
 										case OFindPropStrict(nameIndex):
 										//										prop = abcData.resolveMultiNameByIndex(nameIndex);
 										case OGetLex(nameIndex):
@@ -225,7 +231,9 @@ class FrameScriptParser
 											{
 												if (prop2.name != "int")
 												{
-													result += stack.pop() + "." + temp;
+													// no receiver on the stack: the name was found on the
+													// scope chain (findpropstrict), so on this, as callpropvoid
+													result += (stack.length > 0 ? Std.string(stack.pop()) : "this") + "." + temp;
 												}
 												else
 												{
