@@ -36,12 +36,34 @@ class FrameScriptParser
 		return null;
 	}
 
+	/**
+		The JS of the frame scripts (the frameN methods) of a class, by frame
+		(index 0 is frame 1), null where the frame has none or could not be
+		translated; a frame left untranslated is logged as a warning.
+	**/
 	public static function convertToJS(swfData:SWFRoot, className:String):Array<String>
 	{
+		var translation = translate(swfData, className);
+		for (u in translation.untranslated)
+		{
+			Log.warn("Frame script " + u.frame + " of " + className + " not translated: " + u.reason);
+		}
+		return translation.scripts;
+	}
+
+	/**
+		The frame scripts of a class translated to JS (as convertToJS) and the
+		frames left untranslated, with why: an opcode the translator does not
+		know (it used to drop it and translate the rest as if it were not
+		there), or a script it found parsed improperly.
+	**/
+	public static function translate(swfData:SWFRoot, className:String):FrameScriptTranslation
+	{
+		var untranslated:Array<UntranslatedFrameScript> = [];
 		indentationLevel = 0;
 		// the block of the class: each DoABC has its own constant pools
 		var block = swfData.abcBlockOf(className);
-		if (block == null) return null;
+		if (block == null) return {scripts: null, untranslated: untranslated};
 		var abcData = block.abcData;
 		var cls = abcData.findClassByName(className);
 		var scripts = null;
@@ -68,6 +90,7 @@ class FrameScriptParser
 							var cond_break:Array<String> = [];
 							var in_if:Bool = false;
 							var while_loops = [];
+							var unsupported:Array<String> = [];
 
 							if (pcodes != null)
 							{
@@ -590,10 +613,12 @@ class FrameScriptParser
 												}
 											}
 
+										case ONop | ODebugLine(_) | ODebugFile(_) | ODebugReg(_, _, _) | OBreakPoint | OBreakPointLine(_) | OTimestamp:
+										// no effect on what the script does
+
 										default:
-											// TODO: throw() on unsupported pcodes
-											// Log.warn("", "unsupported pcode " + pcode, true);
-											// throw(pcode);
+											var name = Std.string(pcode.opr);
+											if (unsupported.indexOf(name) == -1) unsupported.push(name);
 									}
 
 									for (i in 0...closingBrackets.length)
@@ -714,10 +739,14 @@ class FrameScriptParser
 
 							// Log.info("", Std.string(pcodes));
 
-							if (js != null && js.indexOf("null.") > -1)
+							if (unsupported.length > 0)
+							{
+								untranslated.push({frame: frameNumOneIndexed, reason: "unsupported opcodes: " + unsupported.join(", ")});
+							}
+							else if (js != null && js.indexOf("null.") > -1)
 							{
 								// Log.info("", "Script appears to have been parsed improperly, discarding");
-								js = null;
+								untranslated.push({frame: frameNumOneIndexed, reason: "parsed improperly (null. in the JS)"});
 							}
 							else
 							{
@@ -731,7 +760,7 @@ class FrameScriptParser
 			}
 		}
 
-		return scripts;
+		return {scripts: scripts, untranslated: untranslated};
 	}
 
 	private static function ind():String
@@ -741,6 +770,22 @@ class FrameScriptParser
 			a += "	";
 		return a;
 	}
+}
+
+/** What FrameScriptParser.translate gives for a class. */
+typedef FrameScriptTranslation =
+{
+	/** The JS by frame (index 0 is frame 1), null where none; null if none at all. */
+	var scripts:Array<String>;
+	/** The frames left without a script although the class has one for them. */
+	var untranslated:Array<UntranslatedFrameScript>;
+}
+
+typedef UntranslatedFrameScript =
+{
+	/** The frame, 1-based (frameN). */
+	var frame:Int;
+	var reason:String;
 }
 
 /**

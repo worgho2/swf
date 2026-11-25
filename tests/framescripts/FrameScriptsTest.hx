@@ -42,6 +42,18 @@ class FrameScriptsTest
 		equals("classes of every DoABC", "Main,game.later.Later,game.living.Living,road.game.resource.ActionMovie", names.join(","));
 		equals("one block per DoABC", 2, twoabc.abcBlocks.length);
 
+		// 4. An opcode the translator does not know leaves the frame
+		// untranslated (no script, the frame reported with the opcodes),
+		// instead of being dropped and the rest translated as if it were not
+		// there. frame4 keeps an int in a local variable (convert_i, setlocal, getlocal).
+		var report = FrameScriptParser.translate(living, "game.living.Living");
+		equals("untranslated frame has no script", null, report.scripts[3]);
+		equals("untranslated frames", "4", [for (u in report.untranslated) Std.string(u.frame)].join(","));
+		equals("why", "unsupported opcodes: OToInt, OSetReg(1), OReg(1)", report.untranslated.length > 0 ? report.untranslated[0].reason : null);
+		equals("the other frames are kept", '\nthis.sendCommand("effect");', report.scripts[0]);
+		equals("convertToJS leaves it out too", null, scripts[3]);
+		equals("a class without frame scripts", 0, FrameScriptParser.translate(living, "road.game.resource.ActionMovie").untranslated.length);
+
 		Sys.println('$checks checks, $failures failed');
 		Sys.exit(failures == 0 ? 0 : 1);
 	}
