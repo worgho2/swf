@@ -737,7 +737,8 @@ class FrameScriptParser
 							if (_force_close) js += ind() + "// force close due to same bracket close collision, double-check statements";
 
 							// take care of common replacements
-							js = js.replace(" int(", " parseInt(");
+							// AS3's int() is no JS function: parseInt, also as an argument
+							js = ~/(^|[^\w.$])int\(/g.replace(js, "$1parseInt(");
 							js = js.replace("flash_", "openfl_");
 							js = js.replace("flash.", "openfl.");
 							js = js.replace("fl_motion", "wwlib_graphics");

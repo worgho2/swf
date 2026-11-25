@@ -4,13 +4,14 @@ package game.living
 
 	/** Frame scripts as Flash CS writes them: frameN methods registered by
 		addFrameScript, calling the base class (1), passing object literals (2,
-		3) and keeping a local variable (4, opcodes the translator lacks). */
+		3), keeping a local variable (4, opcodes the translator lacks) and
+		converting to int (5). */
 	public dynamic class Living extends ActionMovie
 	{
 		public function Living()
 		{
 			super();
-			addFrameScript(0, this.frame1, 1, this.frame2, 2, this.frame3, 3, this.frame4);
+			addFrameScript(0, this.frame1, 1, this.frame2, 2, this.frame3, 3, this.frame4, 4, this.frame5);
 		}
 
 		internal function frame1():*
@@ -33,6 +34,11 @@ package game.living
 		{
 			var next:int = totalFrames;
 			gotoAndStop(next);
+		}
+
+		internal function frame5():*
+		{
+			gotoAndPlay(int(Math.random() * 20));
 		}
 	}
 }
