@@ -18,6 +18,7 @@ class FrameScriptsTest
 	static function main()
 	{
 		var living = load("fixtures/living.swf");
+		var twoabc = load("fixtures/twoabc.swf");
 
 		// 1. A method of the base class defined in the SWF itself: Flash CS and
 		// mxmlc name the protected sendCommand of ActionMovie by a QName in its
@@ -28,6 +29,18 @@ class FrameScriptsTest
 		// 2. Object literals (newobject), nested too.
 		equals("object literal", '\nthis.sendCommand("focus", {"x": 0, "y": 0, "strategy": "shockingLinear", "speed": 20});', scripts[1]);
 		equals("nested object literal", '\nthis.sendCommand("focus", {"x": -200, "strategy": "default", "inner": {"a": 1}});\nthis.stop();', scripts[2]);
+
+		// 3. Every DoABC tag is read, not only the last one: Living is in the
+		// first, Later in the second (mxmlc -frames, fixtures/build.sh).
+		var first = FrameScriptParser.convertToJS(twoabc, "game.living.Living");
+		equals("class of the first DoABC", '\nthis.sendCommand("effect");', first == null ? null : first[0]);
+		var second = FrameScriptParser.convertToJS(twoabc, "game.later.Later");
+		equals("class of the second DoABC", '\nthis.gotoAndPlay("later");', second == null ? null : second[0]);
+		equals("base class from the first DoABC", "road.game.resource.ActionMovie", FrameScriptParser.getBaseClassName(twoabc, "game.living.Living"));
+		var names = twoabc.abcClassNames();
+		names.sort(Reflect.compare);
+		equals("classes of every DoABC", "Main,game.later.Later,game.living.Living,road.game.resource.ActionMovie", names.join(","));
+		equals("one block per DoABC", 2, twoabc.abcBlocks.length);
 
 		Sys.println('$checks checks, $failures failed');
 		Sys.exit(failures == 0 ? 0 : 1);

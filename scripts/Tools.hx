@@ -205,12 +205,13 @@ class Tools
 				baseClassName = "openfl.display.MovieClip";
 			}
 
-			var classData = swf.data.abcData.findClassByName(className);
+			var block = swf.data.abcBlockOf(className);
+			var classData = block == null ? null : block.abcData.findClassByName(className);
 			if (classData != null)
 			{
 				if (classData.superclass != null)
 				{
-					var superClassData = swf.data.abcData.resolveMultiNameByIndex(classData.superclass);
+					var superClassData = block.abcData.resolveMultiNameByIndex(classData.superclass);
 					switch (superClassData.nameSpace)
 					{
 						case NPublic(_) if (!~/^flash\./.match(superClassData.nameSpaceName)):

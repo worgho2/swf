@@ -13,10 +13,12 @@ class FrameScriptParser
 
 	public static function getBaseClassName(swfData:SWFRoot, className:String):String
 	{
-		var classData = swfData.abcData.findClassByName(className);
+		var block = swfData.abcBlockOf(className);
+		if (block == null) return null;
+		var classData = block.abcData.findClassByName(className);
 		if (classData != null && classData.superclass != null)
 		{
-			var superClassName = swfData.abcData.resolveMultiNameByIndex(classData.superclass);
+			var superClassName = block.abcData.resolveMultiNameByIndex(classData.superclass);
 			switch (superClassName.nameSpace)
 			{
 				case NPublic(_) if (!~/^flash\./.match(superClassName.nameSpaceName)):
@@ -37,7 +39,11 @@ class FrameScriptParser
 	public static function convertToJS(swfData:SWFRoot, className:String):Array<String>
 	{
 		indentationLevel = 0;
-		var cls = swfData.abcData.findClassByName(className);
+		// the block of the class: each DoABC has its own constant pools
+		var block = swfData.abcBlockOf(className);
+		if (block == null) return null;
+		var abcData = block.abcData;
+		var cls = abcData.findClassByName(className);
 		var scripts = null;
 
 		if (cls != null && cls.fields != null && cls.fields.length > 0)
@@ -47,12 +53,12 @@ class FrameScriptParser
 				switch (field.kind)
 				{
 					case FMethod(var idx, _, _, _):
-						var methodName = swfData.abcData.resolveMultiNameByIndex(field.name);
+						var methodName = abcData.resolveMultiNameByIndex(field.name);
 						if (methodName != null && AVM2.FRAME_SCRIPT_METHOD_NAME.match(methodName.name))
 						{
 							var frameNumOneIndexed = Std.parseInt(AVM2.FRAME_SCRIPT_METHOD_NAME.matched(1));
 							// Log.info("", "frame script #" + frameNumOneIndexed);
-							var pcodes:Array<{pos:Int, opr:OpCode}> = swfData.pcode[idx.getIndex()];
+							var pcodes:Array<{pos:Int, opr:OpCode}> = block.pcode[idx.getIndex()];
 							var js = "";
 							var prop:MultiName = null;
 							var stack:Array<Dynamic> = new Array();
@@ -77,28 +83,28 @@ class FrameScriptParser
 										case OPop:
 											stack.pop();
 										case OFindPropStrict(nameIndex):
-										//										prop = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+										//										prop = abcData.resolveMultiNameByIndex(nameIndex);
 										case OGetLex(nameIndex):
 											// Log.info("", "OGetLex: " + nameIndex);
-											prop = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+											prop = abcData.resolveMultiNameByIndex(nameIndex);
 
 											var fullname = "";
 
 											if (prop != null)
 											{
-												fullname += AVM2.getFullName(swfData.abcData, prop, cls);
+												fullname += AVM2.getFullName(abcData, prop, cls);
 												stack.push(fullname);
 											}
 										case OGetProp(nameIndex):
 											var fullname = "";
 
-											prop = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+											prop = abcData.resolveMultiNameByIndex(nameIndex);
 
 											if (prop != null)
 											{
 												if (prop.name != null)
 												{
-													fullname += stack.pop() + "." + AVM2.getFullName(swfData.abcData, prop, cls);
+													fullname += stack.pop() + "." + AVM2.getFullName(abcData, prop, cls);
 												}
 												else
 												{
@@ -111,7 +117,7 @@ class FrameScriptParser
 
 											stack.push(fullname);
 										case OSetProp(nameIndex):
-											prop = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+											prop = abcData.resolveMultiNameByIndex(nameIndex);
 											// Log.info("", "OSetProp stack: " + prop + ", " + stack);
 
 											var result = stack.pop();
@@ -144,20 +150,20 @@ class FrameScriptParser
 
 											js += ind() + instance + name + " = " + result + ";";
 										case OString(strIndex):
-											var str = swfData.abcData.getStringByIndex(strIndex);
+											var str = abcData.getStringByIndex(strIndex);
 											stack.push("\"" + str + "\"");
 										case OInt(i):
 											stack.push(i);
 										// Log.info("", "int: " + i);
 										case OIntRef(nameIndex):
-											stack.push(swfData.abcData.getIntByIndex(nameIndex));
+											stack.push(abcData.getIntByIndex(nameIndex));
 										case OSmallInt(i):
 											stack.push(i);
 										// Log.info("", "smallint: " + i);
 										case OFloat(nameIndex):
-											stack.push(swfData.abcData.getFloatByIndex(nameIndex));
+											stack.push(abcData.getFloatByIndex(nameIndex));
 										case OCallPropVoid(nameIndex, argCount):
-											var temp = AVM2.parseFunctionCall(swfData.abcData, cls, nameIndex, argCount, stack);
+											var temp = AVM2.parseFunctionCall(abcData, cls, nameIndex, argCount, stack);
 
 											var callpropvoid:String = "";
 
@@ -181,14 +187,14 @@ class FrameScriptParser
 											//										stack.pop();
 											//										if (prop != null)
 											//										{
-											//											var temp = AVM2.getFullName(swfData.abcData, prop, cls) + "." + AVM2.parseFunctionCall(swfData.abcData, cls, nameIndex, argCount, stack);
+											//											var temp = AVM2.getFullName(abcData, prop, cls) + "." + AVM2.parseFunctionCall(abcData, cls, nameIndex, argCount, stack);
 											//											trace("OCallProperty pushed to stack", temp);
 											//											stack.push(temp);
 											//										}
 
-											var temp = AVM2.parseFunctionCall(swfData.abcData, cls, nameIndex, argCount, stack);
+											var temp = AVM2.parseFunctionCall(abcData, cls, nameIndex, argCount, stack);
 
-											var prop2 = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+											var prop2 = abcData.resolveMultiNameByIndex(nameIndex);
 
 											var result = "";
 
@@ -210,7 +216,7 @@ class FrameScriptParser
 											// Log.info("", "OConstructProperty stack: " + stack);
 
 											var temp = "";
-											temp += AVM2.parseFunctionCall(swfData.abcData, cls, nameIndex, argCount, stack);
+											temp += AVM2.parseFunctionCall(abcData, cls, nameIndex, argCount, stack);
 											if (temp == "int()")
 											{
 												temp = "0";
@@ -229,7 +235,7 @@ class FrameScriptParser
 										case OInitProp(nameIndex):
 											// Log.info("", "OInitProp stack: " + stack);
 
-											prop = swfData.abcData.resolveMultiNameByIndex(nameIndex);
+											prop = abcData.resolveMultiNameByIndex(nameIndex);
 
 											var temp = stack.pop();
 

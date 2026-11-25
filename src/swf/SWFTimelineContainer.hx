@@ -55,6 +55,8 @@ import openfl.events.Event;
 import openfl.utils.ByteArray;
 import openfl.utils.Endian;
 
+using swf.exporters.FrameScriptParser.AVM2;
+
 // import openfl.utils.getTimer;
 class SWFTimelineContainer extends SWFEventDispatcher
 {
@@ -89,8 +91,16 @@ class SWFTimelineContainer extends SWFEventDispatcher
 	public var backgroundColor:Int;
 	public var jpegTablesTag:TagJPEGTables;
 	public var abcTag:TagDoABC;
+	/** The ABC of the last DoABC tag (abcBlocks has every one). */
 	public var abcData:ABCData;
+	/** The opcodes of the method bodies of abcData. */
 	public var pcode:Array<Array<{pos:Int, opr:OpCode}>>;
+	/**
+		Every DoABC tag, in tag order. A SWF can have several: mxmlc writes
+		one per frame of -frames, and some of DDTank's (core.swf,
+		choicefigure.swf, loading.swf) have three.
+	**/
+	public var abcBlocks:Array<SWFABCBlock> = [];
 	public var abcClasses(default, null):Map<Int, ClassDef>;
 
 	public function new()
@@ -576,6 +586,7 @@ class SWFTimelineContainer extends SWFEventDispatcher
 		abcData = reader.read();
 
 		pcode = new Array();
+		abcBlocks.push({abcData: abcData, pcode: pcode});
 		for (fn in abcData.functions)
 		{
 			var i = new haxe.io.BytesInput(fn.code);
@@ -592,6 +603,36 @@ class SWFTimelineContainer extends SWFEventDispatcher
 			}
 			pcode.push(ops);
 		}
+	}
+
+	/**
+		The DoABC block that defines the class (its full name, "pkg.Name"):
+		the first one that does, or null when none does.
+	**/
+	public function abcBlockOf(className:String):SWFABCBlock
+	{
+		for (block in abcBlocks)
+		{
+			if (block.abcData.findClassByName(className) != null) return block;
+		}
+		return null;
+	}
+
+	/** The full names ("pkg.Name") of the classes of every DoABC, in order. */
+	public function abcClassNames():Array<String>
+	{
+		var names = [];
+		for (block in abcBlocks)
+		{
+			for (cls in block.abcData.classes)
+			{
+				var mn = block.abcData.resolveMultiNameByIndex(cls.name);
+				if (mn == null) continue;
+				var name = (mn.nameSpaceName != null && mn.nameSpaceName != "" ? mn.nameSpaceName + "." : "") + mn.name;
+				if (names.indexOf(name) == -1) names.push(name);
+			}
+		}
+		return names;
 	}
 
 	public function buildLayers():Void
