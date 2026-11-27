@@ -65,13 +65,14 @@ class FrameScriptsTest
 		// which the translator does not know, and Math is found by
 		// findpropstrict and getproperty, which it reads as null.Math: those
 		// frames are reported.
-		equals("unoptimized object literals are reported", "2: unsupported opcodes: OToString|3: unsupported opcodes: OToString|4: unsupported opcodes: OToInt, OSetReg(1), OReg(1)|5: parsed improperly (null. in the JS)",
+		equals("unoptimized object literals are reported", "2: unsupported opcodes: OToString|3: unsupported opcodes: OToString|4: unsupported opcodes: OToInt, OSetReg(1), OReg(1)|5: parsed improperly (null. in the JS)|6: parsed improperly (null. in the JS)",
 			[for (u in plain.untranslated) u.frame + ": " + u.reason].join("|"));
 
 		// 6. int(x), the AS3 conversion, is not a JS function: parseInt, as the
 		// library maps it, wherever the call is (it only did after a space;
 		// gotoAndPlay(int(Math.random() * 20)) of DDTank's chatii.swf).
 		equals("int() as an argument", '\nthis.gotoAndPlay(parseInt(Math.random() * 20));', scripts[4]);
+		equals("int() right inside int()", '\nthis.gotoAndPlay(parseInt(parseInt(Math.random() * 20) / 2));', scripts[5]);
 
 		Sys.println('$checks checks, $failures failed');
 		Sys.exit(failures == 0 ? 0 : 1);
