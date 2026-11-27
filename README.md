@@ -3,6 +3,15 @@
 > with its case in `tests/framescripts` (Neko, without lime's CFFI:
 > `cd tests/framescripts && haxe build.hxml && neko framescripts-test.n`).
 > To go upstream once the game is verified.
+>
+> Known limit of the translator, not fixed: `findpropstrict` pushes nothing
+> (it should push the object found on the scope chain), so a call takes its
+> receiver from what is left on the stack and guesses `this` when the stack
+> is empty. With an argument already on the stack the receiver comes out
+> wrong: `a.b(c())` becomes `a.c()`, `sendCommand("effect", foo(1))`
+> becomes `"effect".foo(1)`. No frame script of DDTank has that shape (all
+> of them match the JPEXS decompilation); the proper fix is a scope sentinel
+> pushed by findpropstrict and popped by every call.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE.md) [![Haxelib Version](https://img.shields.io/github/tag/openfl/swf.svg?style=flat&label=haxelib)](http://lib.haxe.org/p/swf)
 
